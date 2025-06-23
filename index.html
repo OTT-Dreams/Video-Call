@@ -198,9 +198,9 @@
       localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       localVideo.srcObject = localStream;
     } catch (err) {
-      alert("Unable to access camera or mic.\n➤ Close any overlay apps like Messenger or WhatsApp Bubble\n➤ Or check browser permission settings.");
-      console.error("Media access error:", err);
-    }
+  alert("Unable to access camera or mic.\n➤ Close any overlay apps like Messenger or WhatsApp Bubble\n➤ Or check browser permission settings.");
+  console.error("Media access error:", err);}
+
   }
 
   async function startCall() {
