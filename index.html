@@ -41,41 +41,36 @@
         left: 50%;
         transform: translateX(-50%);
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: center;
         z-index: 10;
-        gap: 6px;
+        gap: 8px;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 6px 10px;
+        border-radius: 20px;
       }
 
       .id-tap {
-        background: rgba(0, 0, 0, 0.6);
         color: #fff;
-        padding: 6px 12px;
-        border-radius: 20px;
         font-size: 12px;
         cursor: pointer;
         user-select: none;
       }
 
       .id-tap:hover {
-        background: rgba(255, 255, 255, 0.15);
-      }
-
-      .join-box {
-        display: flex;
-        gap: 6px;
+        opacity: 0.8;
       }
 
       #peerIdInput {
-        padding: 6px;
+        padding: 5px;
         font-size: 12px;
         border-radius: 4px;
         border: none;
-        width: 160px;
+        width: 120px;
       }
 
       #joinBtn {
-        padding: 6px 10px;
+        padding: 5px 10px;
         font-size: 12px;
         background: #4caf50;
         color: white;
@@ -126,15 +121,13 @@
     <video id="remoteVideo" autoplay></video>
     <video id="localVideo" autoplay muted></video>
 
-    <!-- Top ID & Join Section -->
-    <div class="top-bar">
+    <!-- Top ID + Join Row -->
+    <div class="top-bar" id="topBar">
       <div class="id-tap" onclick="copyId()" title="Tap to copy ID">
         ID: <span id="peerIdText">Loading...</span>
       </div>
-      <div class="join-box">
-        <input type="text" id="peerIdInput" placeholder="Enter Host ID" />
-        <button id="joinBtn" onclick="startCall()">Join</button>
-      </div>
+      <input type="text" id="peerIdInput" placeholder="Enter Host ID" />
+      <button id="joinBtn" onclick="startCall()">Join</button>
     </div>
 
     <!-- Bottom Controls -->
@@ -147,12 +140,15 @@
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script>
       const peerIdText = document.getElementById('peerIdText');
+      const peerIdInput = document.getElementById('peerIdInput');
       const localVideo = document.getElementById('localVideo');
       const remoteVideo = document.getElementById('remoteVideo');
-      const peerIdInput = document.getElementById('peerIdInput');
+      const topBar = document.getElementById('topBar');
+
+      let fullPeerId = '';
       let localStream;
-      let peer = new Peer();
       let currentCall;
+      const peer = new Peer();
 
       navigator.mediaDevices.getUserMedia({
         video: {
@@ -167,7 +163,9 @@
       });
 
       peer.on('open', (id) => {
-        peerIdText.innerText = id;
+        fullPeerId = id;
+        const hiddenPart = '•'.repeat(id.length - 4);
+        peerIdText.innerText = id.slice(0, 4) + hiddenPart;
       });
 
       peer.on('call', (call) => {
@@ -176,6 +174,7 @@
         call.on('stream', (remoteStream) => {
           remoteVideo.srcObject = remoteStream;
         });
+        hideTopBar();
       });
 
       function startCall() {
@@ -186,6 +185,7 @@
         call.on('stream', (remoteStream) => {
           remoteVideo.srcObject = remoteStream;
         });
+        hideTopBar();
       }
 
       function toggleVideo() {
@@ -199,8 +199,10 @@
       }
 
       function copyId() {
-        navigator.clipboard.writeText(peerIdText.innerText);
-        alert('Peer ID copied!');
+        if (fullPeerId) {
+          navigator.clipboard.writeText(fullPeerId);
+          alert("Peer ID copied!");
+        }
       }
 
       function endCall() {
@@ -208,6 +210,15 @@
           currentCall.close();
           remoteVideo.srcObject = null;
         }
+        showTopBar();
+      }
+
+      function hideTopBar() {
+        topBar.style.display = 'none';
+      }
+
+      function showTopBar() {
+        topBar.style.display = 'flex';
       }
     </script>
   </body>
