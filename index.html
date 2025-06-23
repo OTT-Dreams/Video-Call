@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Secure Video Call</title>
+    <style>
+      body { text-align: center; font-family: sans-serif; }
+      video { width: 45%; margin: 10px; border-radius: 10px; }
+    </style>
+  </head>
+  <body>
+    <h2>Secure Video Calling App</h2>
+    <video id="localVideo" autoplay muted></video>
+    <video id="remoteVideo" autoplay></video>
+    <br />
+    <input type="text" id="peerIdInput" placeholder="Enter Peer ID to call">
+    <button onclick="startCall()">Call</button>
+
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script>
+      const peer = new Peer();
+
+      const localVideo = document.getElementById('localVideo');
+      const remoteVideo = document.getElementById('remoteVideo');
+
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        .then(stream => {
+          localVideo.srcObject = stream;
+
+          peer.on('call', call => {
+            call.answer(stream);
+            call.on('stream', remoteStream => {
+              remoteVideo.srcObject = remoteStream;
+            });
+          });
+
+          window.startCall = () => {
+            const peerId = document.getElementById('peerIdInput').value;
+            const call = peer.call(peerId, stream);
+            call.on('stream', remoteStream => {
+              remoteVideo.srcObject = remoteStream;
+            });
+          };
+        });
+
+      peer.on('open', id => {
+        alert("Your Peer ID: " + id);
+      });
+    </script>
+  </body>
+</html>
