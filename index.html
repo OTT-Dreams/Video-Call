@@ -3,48 +3,80 @@
   <head>
     <title>Secure Video Call</title>
     <style>
-      body { text-align: center; font-family: sans-serif; }
-      video { width: 45%; margin: 10px; border-radius: 10px; }
+      body {
+        text-align: center;
+        font-family: sans-serif;
+        padding: 20px;
+      }
+
+      video {
+        width: 45%;
+        margin: 10px;
+        border-radius: 10px;
+        background: #000;
+      }
+
+      #peerInfo {
+        font-weight: bold;
+        color: green;
+        margin-top: 10px;
+      }
     </style>
   </head>
   <body>
     <h2>Secure Video Calling App</h2>
+
     <video id="localVideo" autoplay muted></video>
     <video id="remoteVideo" autoplay></video>
+
+    <p id="peerInfo">Loading...</p>
+
     <br />
-    <input type="text" id="peerIdInput" placeholder="Enter Peer ID to call">
-    <button onclick="startCall()">Call</button>
+    <input type="text" id="peerIdInput" placeholder="Enter Host Peer ID to join">
+    <button onclick="startCall()">Join Call</button>
 
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script>
-      const peer = new Peer();
-
       const localVideo = document.getElementById('localVideo');
       const remoteVideo = document.getElementById('remoteVideo');
+      const peerInfo = document.getElementById('peerInfo');
 
+      let localStream;
+      const peer = new Peer();
+
+      // Get media stream first
       navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         .then(stream => {
+          localStream = stream;
           localVideo.srcObject = stream;
-
-          peer.on('call', call => {
-            call.answer(stream);
-            call.on('stream', remoteStream => {
-              remoteVideo.srcObject = remoteStream;
-            });
-          });
-
-          window.startCall = () => {
-            const peerId = document.getElementById('peerIdInput').value;
-            const call = peer.call(peerId, stream);
-            call.on('stream', remoteStream => {
-              remoteVideo.srcObject = remoteStream;
-            });
-          };
         });
 
+      // When PeerJS generates your ID
       peer.on('open', id => {
-        alert("Your Peer ID: " + id);
+        peerInfo.innerHTML = "Your Peer ID: <span style='color:blue'>" + id + "</span><br>Share this ID with your friend to let them join.";
       });
+
+      // Handle incoming call
+      peer.on('call', call => {
+        call.answer(localStream);
+        call.on('stream', remoteStream => {
+          remoteVideo.srcObject = remoteStream;
+        });
+      });
+
+      // Outgoing call
+      function startCall() {
+        const remotePeerId = document.getElementById('peerIdInput').value.trim();
+        if (!remotePeerId) {
+          alert("Please enter a valid Peer ID");
+          return;
+        }
+
+        const call = peer.call(remotePeerId, localStream);
+        call.on('stream', remoteStream => {
+          remoteVideo.srcObject = remoteStream;
+        });
+      }
     </script>
   </body>
 </html>
