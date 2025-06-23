@@ -55,6 +55,21 @@
         font-size: 12px;
         cursor: pointer;
         user-select: none;
+        transition: all 0.5s ease;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .id-tap.hide-middle::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 50px;
+        width: 80px;
+        background: linear-gradient(to right, transparent, black 60%);
       }
 
       .id-tap:hover {
@@ -127,7 +142,7 @@
 
     <!-- Top ID + Join Row -->
     <div class="top-bar" id="topBar">
-      <div class="id-tap" onclick="copyId()" title="Tap to copy ID">
+      <div class="id-tap" id="idDisplay" onclick="copyId()" title="Tap to copy ID">
         ID: <span id="peerIdText">Loading...</span>
       </div>
       <input type="text" id="peerIdInput" placeholder="Enter Host ID" />
@@ -150,6 +165,7 @@
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script>
       const peerIdText = document.getElementById('peerIdText');
+      const idDisplay = document.getElementById('idDisplay');
       const peerIdInput = document.getElementById('peerIdInput');
       const localVideo = document.getElementById('localVideo');
       const remoteVideo = document.getElementById('remoteVideo');
@@ -174,8 +190,12 @@
 
       peer.on('open', (id) => {
         fullPeerId = id;
-        const hiddenPart = '•'.repeat(id.length - 4);
-        peerIdText.innerText = id.slice(0, 4) + hiddenPart;
+        peerIdText.innerText = id;
+        // Auto hide middle after 6s
+        setTimeout(() => {
+          const hiddenPart = '•'.repeat(id.length - 4);
+          peerIdText.innerText = id.slice(0, 4) + hiddenPart;
+        }, 6000);
       });
 
       peer.on('call', (call) => {
@@ -210,8 +230,14 @@
 
       function copyId() {
         if (fullPeerId) {
+          peerIdText.innerText = fullPeerId; // Restore full ID
           navigator.clipboard.writeText(fullPeerId);
           alert("Peer ID copied!");
+          // Auto fade again after 6s
+          setTimeout(() => {
+            const hiddenPart = '•'.repeat(fullPeerId.length - 4);
+            peerIdText.innerText = fullPeerId.slice(0, 4) + hiddenPart;
+          }, 6000);
         }
       }
 
