@@ -156,94 +156,172 @@
     </div>
 
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <script>
-      const peerIdText = document.getElementById('peerIdText');
-      const idDisplay = document.getElementById('idDisplay');
-      const peerIdInput = document.getElementById('peerIdInput');
-      const localVideo = document.getElementById('localVideo');
-      const remoteVideo = document.getElementById('remoteVideo');
-      const topBar = document.getElementById('topBar');
+<script>
+  const peerIdText = document.getElementById('peerIdText');
+  const idDisplay = document.getElementById('idDisplay');
+  const peerIdInput = document.getElementById('peerIdInput');
+  const localVideo = document.getElementById('localVideo');
+  const remoteVideo = document.getElementById('remoteVideo');
+  const topBar = document.getElementById('topBar');
 
-      let fullPeerId = '';
-      let localStream;
-      let currentCall;
-      const peer = new Peer();
+  let fullPeerId = '';
+  let localStream;
+  let currentCall;
+  const peer = new Peer();
 
-      navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true
-      }).then((stream) => {
-        localStream = stream;
-        localVideo.srcObject = stream;
-      }).catch((err) => {
-        alert("Camera or microphone access denied. Please allow permission and refresh.");
-        console.error(err);
-      });
+  const encryptionKey = crypto.getRandomValues(new Uint8Array(16)); // symmetric key for E2EE
 
-      peer.on('open', (id) => {
-        fullPeerId = id;
-        peerIdText.innerText = id;
-        setTimeout(() => {
-          peerIdText.innerText = id.slice(0, 6) + '...';
-        }, 5000);
-      });
+  function getCryptoKey() {
+    return crypto.subtle.importKey(
+      "raw",
+      encryptionKey,
+      { name: "AES-GCM" },
+      false,
+      ["encrypt", "decrypt"]
+    );
+  }
 
-      peer.on('call', (call) => {
-        currentCall = call;
-        call.answer(localStream);
-        call.on('stream', (remoteStream) => {
-          remoteVideo.srcObject = remoteStream;
-        });
-        hideTopBar();
-      });
+  async function encryptTransform(chunk, controller) {
+    const key = await getCryptoKey();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      key,
+      chunk.data
+    );
+    const payload = new Uint8Array(12 + encrypted.byteLength);
+    payload.set(iv);
+    payload.set(new Uint8Array(encrypted), 12);
+    controller.enqueue(new EncodedVideoChunk({
+      type: chunk.type,
+      timestamp: chunk.timestamp,
+      data: payload,
+      duration: chunk.duration
+    }));
+  }
 
-      function startCall() {
-        const remotePeerId = peerIdInput.value.trim();
-        if (!remotePeerId) return alert('Enter a Peer ID');
-        const call = peer.call(remotePeerId, localStream);
-        currentCall = call;
-        call.on('stream', (remoteStream) => {
-          remoteVideo.srcObject = remoteStream;
-        });
-        hideTopBar();
-      }
+  async function decryptTransform(chunk, controller) {
+    const key = await getCryptoKey();
+    const iv = chunk.data.slice(0, 12);
+    const encrypted = chunk.data.slice(12);
+    try {
+      const decrypted = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv },
+        key,
+        encrypted
+      );
+      controller.enqueue(new EncodedVideoChunk({
+        type: chunk.type,
+        timestamp: chunk.timestamp,
+        data: new Uint8Array(decrypted),
+        duration: chunk.duration
+      }));
+    } catch (e) {
+      console.error("Decryption failed", e);
+    }
+  }
 
-      function toggleVideo() {
-        const track = localStream.getVideoTracks()[0];
-        track.enabled = !track.enabled;
-      }
+  async function setupSenderEncryption(sender) {
+    const senderStreams = sender.createEncodedStreams();
+    const transformStream = new TransformStream({ transform: encryptTransform });
+    senderStreams.readable
+      .pipeThrough(transformStream)
+      .pipeTo(senderStreams.writable);
+  }
 
-      function toggleAudio() {
-        const track = localStream.getAudioTracks()[0];
-        track.enabled = !track.enabled;
-      }
+  async function setupReceiverDecryption(receiver) {
+    const receiverStreams = receiver.createEncodedStreams();
+    const transformStream = new TransformStream({ transform: decryptTransform });
+    receiverStreams.readable
+      .pipeThrough(transformStream)
+      .pipeTo(receiverStreams.writable);
+  }
 
-      function copyId() {
-        if (fullPeerId) {
-          peerIdText.innerText = fullPeerId;
-          navigator.clipboard.writeText(fullPeerId);
-          alert("Peer ID copied!");
-          setTimeout(() => {
-            peerIdText.innerText = fullPeerId.slice(0, 6) + '...';
-          }, 4000);
-        }
-      }
+  navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    .then(async (stream) => {
+      localStream = stream;
+      localVideo.srcObject = stream;
+    })
+    .catch((err) => {
+      alert("Camera or microphone access denied. Please allow permission and refresh.");
+      console.error(err);
+    });
 
-      function endCall() {
-        if (currentCall) {
-          currentCall.close();
-          remoteVideo.srcObject = null;
-        }
-        showTopBar();
-      }
+  peer.on('open', (id) => {
+    fullPeerId = id;
+    peerIdText.innerText = id;
+    setTimeout(() => {
+      peerIdText.innerText = id.slice(0, 6) + '...';
+    }, 5000);
+  });
 
-      function hideTopBar() {
-        topBar.style.display = 'none';
-      }
+  peer.on('call', async (call) => {
+    currentCall = call;
+    call.answer(localStream);
+    call.on('stream', (remoteStream) => {
+      remoteVideo.srcObject = remoteStream;
+    });
 
-      function showTopBar() {
-        topBar.style.display = 'flex';
-      }
-    </script>
+    call.peerConnection.getSenders().forEach(setupSenderEncryption);
+    call.peerConnection.getReceivers().forEach(setupReceiverDecryption);
+
+    hideTopBar();
+  });
+
+  async function startCall() {
+    const remotePeerId = peerIdInput.value.trim();
+    if (!remotePeerId) return alert('Enter a Peer ID');
+    const call = peer.call(remotePeerId, localStream);
+    currentCall = call;
+
+    call.on('stream', (remoteStream) => {
+      remoteVideo.srcObject = remoteStream;
+    });
+
+    call.peerConnection.getSenders().forEach(setupSenderEncryption);
+    call.peerConnection.getReceivers().forEach(setupReceiverDecryption);
+
+    hideTopBar();
+  }
+
+  function toggleVideo() {
+    const track = localStream.getVideoTracks()[0];
+    track.enabled = !track.enabled;
+  }
+
+  function toggleAudio() {
+    const track = localStream.getAudioTracks()[0];
+    track.enabled = !track.enabled;
+  }
+
+  function copyId() {
+    if (fullPeerId) {
+      peerIdText.innerText = fullPeerId;
+      navigator.clipboard.writeText(fullPeerId);
+      alert("Peer ID copied!");
+      setTimeout(() => {
+        peerIdText.innerText = fullPeerId.slice(0, 6) + '...';
+      }, 4000);
+    }
+  }
+
+  function endCall() {
+    if (currentCall) {
+      currentCall.close();
+      remoteVideo.srcObject = null;
+    }
+    showTopBar();
+  }
+
+  function hideTopBar() {
+    topBar.style.display = 'none';
+  }
+
+  function showTopBar() {
+    topBar.style.display = 'flex';
+  }
+</script>
+
+    
   </body>
 </html>
