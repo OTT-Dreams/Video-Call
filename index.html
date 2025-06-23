@@ -4,6 +4,7 @@
     <title>Secure Video Call</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
+      /* Styles same as before (unchanged) */
       body {
         margin: 0;
         padding: 0;
@@ -206,6 +207,10 @@
         call.on('stream', (remoteStream) => {
           remoteVideo.srcObject = remoteStream;
         });
+        call.on('close', () => {
+          remoteVideo.srcObject = null;
+          showTopBar();
+        });
         hideTopBar();
       });
 
@@ -216,6 +221,10 @@
         currentCall = call;
         call.on('stream', (remoteStream) => {
           remoteVideo.srcObject = remoteStream;
+        });
+        call.on('close', () => {
+          remoteVideo.srcObject = null;
+          showTopBar();
         });
         hideTopBar();
       }
