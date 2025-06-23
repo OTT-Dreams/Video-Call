@@ -44,53 +44,46 @@
         flex-direction: row;
         align-items: center;
         z-index: 10;
-        gap: 8px;
+        gap: 10px;
         background: rgba(0, 0, 0, 0.6);
-        padding: 6px 10px;
-        border-radius: 20px;
+        padding: 10px 16px;
+        border-radius: 24px;
       }
 
       .id-tap {
         color: #fff;
-        font-size: 12px;
+        font-size: 16px;
         cursor: pointer;
         user-select: none;
-        transition: all 0.5s ease;
-        max-width: 200px;
+        max-width: 150px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
 
-      .id-tap.hide-middle::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        left: 50px;
-        width: 80px;
-        background: linear-gradient(to right, transparent, black 60%);
-      }
-
-      .id-tap:hover {
-        opacity: 0.8;
+      .id-wrapper {
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        position: relative;
       }
 
       #peerIdInput {
-        padding: 5px;
-        font-size: 12px;
+        padding: 7px;
+        font-size: 14px;
         border-radius: 4px;
         border: none;
-        width: 120px;
+        width: 140px;
       }
 
       #joinBtn {
-        padding: 5px 10px;
-        font-size: 12px;
+        padding: 7px 14px;
+        font-size: 14px;
         background: #4caf50;
         color: white;
         border: none;
-        border-radius: 4px;
+        border-radius: 6px;
         cursor: pointer;
       }
 
@@ -103,13 +96,13 @@
         background: rgba(20, 20, 20, 0.9);
         padding: 8px 16px;
         border-radius: 32px;
-        gap: 10px;
+        gap: 12px;
         z-index: 10;
       }
 
       .ctrl-btn {
-        width: 42px;
-        height: 42px;
+        width: 50px;
+        height: 50px;
         border: none;
         border-radius: 50%;
         background-color: #444;
@@ -126,8 +119,8 @@
       }
 
       .ctrl-btn img {
-        width: 22px;
-        height: 22px;
+        width: 26px;
+        height: 26px;
         filter: invert(100%);
       }
 
@@ -143,7 +136,7 @@
     <!-- Top ID + Join Row -->
     <div class="top-bar" id="topBar">
       <div class="id-tap" id="idDisplay" onclick="copyId()" title="Tap to copy ID">
-        ID: <span id="peerIdText">Loading...</span>
+        ID: <span class="id-wrapper"><span id="peerIdText">Loading...</span></span>
       </div>
       <input type="text" id="peerIdInput" placeholder="Enter Host ID" />
       <button id="joinBtn" onclick="startCall()">Join</button>
@@ -177,25 +170,22 @@
       const peer = new Peer();
 
       navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 }
-        },
+        video: true,
         audio: true
       }).then((stream) => {
         localStream = stream;
         localVideo.srcObject = stream;
+      }).catch((err) => {
+        alert("Camera or microphone access denied. Please allow permission and refresh.");
+        console.error(err);
       });
 
       peer.on('open', (id) => {
         fullPeerId = id;
         peerIdText.innerText = id;
-        // Auto hide middle after 6s
         setTimeout(() => {
-          const hiddenPart = '•'.repeat(id.length - 4);
-          peerIdText.innerText = id.slice(0, 4) + hiddenPart;
-        }, 6000);
+          peerIdText.innerText = id.slice(0, 6) + '...';
+        }, 5000);
       });
 
       peer.on('call', (call) => {
@@ -230,14 +220,12 @@
 
       function copyId() {
         if (fullPeerId) {
-          peerIdText.innerText = fullPeerId; // Restore full ID
+          peerIdText.innerText = fullPeerId;
           navigator.clipboard.writeText(fullPeerId);
           alert("Peer ID copied!");
-          // Auto fade again after 6s
           setTimeout(() => {
-            const hiddenPart = '•'.repeat(fullPeerId.length - 4);
-            peerIdText.innerText = fullPeerId.slice(0, 4) + hiddenPart;
-          }, 6000);
+            peerIdText.innerText = fullPeerId.slice(0, 6) + '...';
+          }, 4000);
         }
       }
 
