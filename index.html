@@ -4,13 +4,20 @@
     <title>Secure Video Call</title>
     <style>
       body {
+        background-color: #f2f2f2;
         text-align: center;
-        font-family: sans-serif;
+        font-family: 'Segoe UI', sans-serif;
         padding: 20px;
+      }
+
+      h2 {
+        color: #333;
+        margin-bottom: 20px;
       }
 
       video {
         width: 45%;
+        max-width: 400px;
         margin: 10px;
         border-radius: 10px;
         background: #000;
@@ -19,52 +26,86 @@
       #peerInfo {
         font-weight: bold;
         color: green;
-        margin-top: 10px;
+        margin: 10px 0;
+      }
+
+      input[type="text"] {
+        padding: 10px;
+        width: 250px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        margin: 10px 5px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        background-color: #4CAF50;
+        color: white;
+        transition: background 0.3s ease;
+      }
+
+      button:hover {
+        background-color: #388e3c;
+      }
+
+      .controls {
+        margin-top: 15px;
+      }
+
+      @media (max-width: 768px) {
+        video {
+          width: 90%;
+        }
       }
     </style>
   </head>
   <body>
-    <h2>Secure Video Calling App</h2>
+    <h2>🔒 Secure Video Calling App</h2>
 
     <video id="localVideo" autoplay muted></video>
     <video id="remoteVideo" autoplay></video>
 
-    <p id="peerInfo">Loading...</p>
+    <div id="peerInfo">Loading Peer ID...</div>
 
-    <br />
-    <input type="text" id="peerIdInput" placeholder="Enter Host Peer ID to join">
+    <input type="text" id="peerIdInput" placeholder="Enter Host Peer ID">
     <button onclick="startCall()">Join Call</button>
+
+    <div class="controls">
+      <button onclick="toggleVideo()">🎥 Toggle Camera</button>
+      <button onclick="toggleAudio()">🎤 Toggle Mic</button>
+    </div>
 
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script>
       const localVideo = document.getElementById('localVideo');
       const remoteVideo = document.getElementById('remoteVideo');
       const peerInfo = document.getElementById('peerInfo');
-
       let localStream;
-      const peer = new Peer();
+      let peer = new Peer();
+      let currentCall;
 
-      // Get media stream first
       navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         .then(stream => {
           localStream = stream;
           localVideo.srcObject = stream;
         });
 
-      // When PeerJS generates your ID
       peer.on('open', id => {
-        peerInfo.innerHTML = "Your Peer ID: <span style='color:blue'>" + id + "</span><br>Share this ID with your friend to let them join.";
+        peerInfo.innerHTML = "Your Peer ID: <span style='color:blue'>" + id + "</span><br>Share this with your friend to let them join.";
       });
 
-      // Handle incoming call
       peer.on('call', call => {
+        currentCall = call;
         call.answer(localStream);
         call.on('stream', remoteStream => {
           remoteVideo.srcObject = remoteStream;
         });
       });
 
-      // Outgoing call
       function startCall() {
         const remotePeerId = document.getElementById('peerIdInput').value.trim();
         if (!remotePeerId) {
@@ -73,9 +114,22 @@
         }
 
         const call = peer.call(remotePeerId, localStream);
+        currentCall = call;
         call.on('stream', remoteStream => {
           remoteVideo.srcObject = remoteStream;
         });
+      }
+
+      function toggleVideo() {
+        const videoTrack = localStream.getVideoTracks()[0];
+        videoTrack.enabled = !videoTrack.enabled;
+        alert("Camera " + (videoTrack.enabled ? "On" : "Off"));
+      }
+
+      function toggleAudio() {
+        const audioTrack = localStream.getAudioTracks()[0];
+        audioTrack.enabled = !audioTrack.enabled;
+        alert("Microphone " + (audioTrack.enabled ? "Unmuted" : "Muted"));
       }
     </script>
   </body>
