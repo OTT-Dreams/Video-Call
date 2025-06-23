@@ -32,54 +32,55 @@
         border-radius: 10px;
         object-fit: cover;
         border: 1px solid #ccc;
+        z-index: 5;
       }
 
-      .id-bar {
+      .top-bar {
         position: absolute;
-        top: 12px;
+        top: 10px;
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(0, 0, 0, 0.7);
-        color: #fff;
-        padding: 5px 10px;
-        border-radius: 14px;
-        font-size: 12px;
         display: flex;
+        flex-direction: column;
         align-items: center;
+        z-index: 10;
         gap: 6px;
       }
 
-      .id-bar .ctrl-btn {
-        width: 28px;
-        height: 28px;
+      .id-tap {
+        background: rgba(0, 0, 0, 0.6);
+        color: #fff;
+        padding: 6px 12px;
+        border-radius: 20px;
         font-size: 12px;
+        cursor: pointer;
+        user-select: none;
       }
 
-      #peerIdInput,
-      #joinBtn {
-        padding: 6px;
-        font-size: 12px;
-        border: none;
-        border-radius: 4px;
+      .id-tap:hover {
+        background: rgba(255, 255, 255, 0.15);
+      }
+
+      .join-box {
+        display: flex;
+        gap: 6px;
       }
 
       #peerIdInput {
-        width: 150px;
-      }
-
-      #join-section {
-        position: absolute;
-        top: 50px;
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex;
-        gap: 6px;
-        z-index: 10;
+        padding: 6px;
+        font-size: 12px;
+        border-radius: 4px;
+        border: none;
+        width: 160px;
       }
 
       #joinBtn {
+        padding: 6px 10px;
+        font-size: 12px;
         background: #4caf50;
         color: white;
+        border: none;
+        border-radius: 4px;
         cursor: pointer;
       }
 
@@ -93,6 +94,7 @@
         padding: 8px 16px;
         border-radius: 32px;
         gap: 10px;
+        z-index: 10;
       }
 
       .ctrl-btn {
@@ -118,27 +120,21 @@
       .end-call {
         background-color: crimson;
       }
-
-      .ctrl-btn img {
-        width: 20px;
-        height: 20px;
-      }
     </style>
   </head>
   <body>
     <video id="remoteVideo" autoplay></video>
     <video id="localVideo" autoplay muted></video>
 
-    <!-- Top ID bar -->
-    <div class="id-bar">
-      <span id="peerIdText">Loading ID...</span>
-      <button class="ctrl-btn" onclick="copyId()" title="Copy ID">📋</button>
-    </div>
-
-    <!-- Join input section -->
-    <div id="join-section">
-      <input type="text" id="peerIdInput" placeholder="Enter Host Peer ID" />
-      <button id="joinBtn" onclick="startCall()">Join</button>
+    <!-- Top ID & Join Section -->
+    <div class="top-bar">
+      <div class="id-tap" onclick="copyId()" title="Tap to copy ID">
+        ID: <span id="peerIdText">Loading...</span>
+      </div>
+      <div class="join-box">
+        <input type="text" id="peerIdInput" placeholder="Enter Host ID" />
+        <button id="joinBtn" onclick="startCall()">Join</button>
+      </div>
     </div>
 
     <!-- Bottom Controls -->
