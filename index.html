@@ -33,7 +33,7 @@
       border: 1px solid #ccc;
       object-fit: cover;
       background: #000;
-      transform: scaleX(-1); /* Flip horizontally to correct mirror */
+      transform: scaleX(-1);
       z-index: 5;
       transition: all 0.3s ease;
       cursor: pointer;
@@ -183,107 +183,96 @@
     </button>
   </div>
 
-<script>
-  let localStream;
-  let currentCall;
-  const localVideo = document.getElementById("localVideo");
-  const remoteVideo = document.getElementById("remoteVideo");
-  const topBar = document.getElementById("topBar");
-  let isLocalBig = false; // Track layout state
+  <!-- ✅ Include PeerJS -->
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
-  const peer = new Peer();
+  <script>
+    let localStream;
+    let currentCall;
+    const localVideo = document.getElementById("localVideo");
+    const remoteVideo = document.getElementById("remoteVideo");
+    const topBar = document.getElementById("topBar");
+    let isLocalBig = false;
 
-  peer.on("open", (id) => {
-    document.getElementById("peerIdText").textContent = id;
-  });
+    const peer = new Peer();
 
-  peer.on("call", async (call) => {
-    currentCall = call;
-    if (!localStream) await getMedia();
-    call.answer(localStream);
-    call.on("stream", (remoteStream) => {
-      remoteVideo.srcObject = remoteStream;
-      topBar.style.display = "none";
+    peer.on("open", (id) => {
+      document.getElementById("peerIdText").textContent = id;
+      console.log("My PeerJS ID:", id);
     });
-  });
 
-  async function getMedia() {
-    try {
-      const camPerm = await navigator.permissions.query({ name: "camera" });
-      const micPerm = await navigator.permissions.query({ name: "microphone" });
+    peer.on("call", async (call) => {
+      currentCall = call;
+      if (!localStream) await getMedia();
+      call.answer(localStream);
+      call.on("stream", (remoteStream) => {
+        remoteVideo.srcObject = remoteStream;
+        topBar.style.display = "none";
+      });
+    });
 
-      if (camPerm.state === "denied" || micPerm.state === "denied") {
-        alert("Camera or microphone access is blocked.\nPlease enable from browser settings.");
-        return;
+    async function getMedia() {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localVideo.srcObject = localStream;
+      } catch (err) {
+        alert("Camera/Mic access denied or unavailable.\n➤ Make sure you allowed it in browser settings.");
+        console.error(err);
       }
-
-      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      localVideo.srcObject = localStream;
-    } catch (err) {
-      alert("Unable to access camera or mic.\n➤ Close any overlay apps like Messenger or WhatsApp Bubble\n➤ Or check browser permission settings.");
-      console.error("Media access error:", err);
     }
-  }
 
-  async function startCall() {
-    const peerId = document.getElementById("peerIdInput").value.trim();
-    if (!peerId) return alert("Please enter a peer ID to join.");
-    if (!localStream) await getMedia();
+    async function startCall() {
+      const peerId = document.getElementById("peerIdInput").value.trim();
+      if (!peerId) return alert("Please enter a peer ID to join.");
+      if (!localStream) await getMedia();
 
-    const call = peer.call(peerId, localStream);
-    currentCall = call;
+      const call = peer.call(peerId, localStream);
+      currentCall = call;
 
-    call.on("stream", (remoteStream) => {
-      remoteVideo.srcObject = remoteStream;
-      topBar.style.display = "none";
-    });
-  }
-
-  function toggleVideo() {
-    const videoTrack = localStream.getVideoTracks()[0];
-    videoTrack.enabled = !videoTrack.enabled;
-    document.getElementById("videoBtn").classList.toggle("toggled-off", !videoTrack.enabled);
-  }
-
-  function toggleAudio() {
-    const audioTrack = localStream.getAudioTracks()[0];
-    audioTrack.enabled = !audioTrack.enabled;
-    document.getElementById("audioBtn").classList.toggle("toggled-off", !audioTrack.enabled);
-  }
-
-  function endCall() {
-    if (currentCall) {
-      currentCall.close();
-      remoteVideo.srcObject = null;
-      topBar.style.display = "flex";
+      call.on("stream", (remoteStream) => {
+        remoteVideo.srcObject = remoteStream;
+        topBar.style.display = "none";
+      });
     }
-  }
 
-  function copyId() {
-    const id = document.getElementById("peerIdText").textContent;
-    navigator.clipboard.writeText(id);
-    alert("Copied ID: " + id);
-  }
-
-  // ✅ Full WhatsApp-style swap on click (any of the two)
-  function swapVideos() {
-    isLocalBig = !isLocalBig;
-
-    if (isLocalBig) {
-      localVideo.classList.add("local-fullscreen");
-      remoteVideo.classList.add("remote-small");
-      remoteVideo.classList.remove("local-fullscreen");
-      localVideo.classList.remove("remote-small");
-    } else {
-      localVideo.classList.remove("local-fullscreen");
-      remoteVideo.classList.remove("remote-small");
+    function toggleVideo() {
+      const videoTrack = localStream.getVideoTracks()[0];
+      videoTrack.enabled = !videoTrack.enabled;
+      document.getElementById("videoBtn").classList.toggle("toggled-off", !videoTrack.enabled);
     }
-  }
 
-  localVideo.addEventListener("click", swapVideos);
-  remoteVideo.addEventListener("click", swapVideos);
+    function toggleAudio() {
+      const audioTrack = localStream.getAudioTracks()[0];
+      audioTrack.enabled = !audioTrack.enabled;
+      document.getElementById("audioBtn").classList.toggle("toggled-off", !audioTrack.enabled);
+    }
 
-  getMedia(); // Start camera on load
-</script>
+    function endCall() {
+      if (currentCall) {
+        currentCall.close();
+        remoteVideo.srcObject = null;
+        topBar.style.display = "flex";
+      }
+    }
+
+    function copyId() {
+      const id = document.getElementById("peerIdText").textContent;
+      navigator.clipboard.writeText(id);
+      alert("Copied ID: " + id);
+    }
+
+    // Layout swap on click
+    function swapVideos() {
+      isLocalBig = !isLocalBig;
+      localVideo.classList.toggle("local-fullscreen", isLocalBig);
+      remoteVideo.classList.toggle("remote-small", isLocalBig);
+    }
+
+    localVideo.addEventListener("click", swapVideos);
+    remoteVideo.addEventListener("click", swapVideos);
+
+    // 🔄 Get stream immediately
+    getMedia();
+  </script>
 </body>
 </html>
