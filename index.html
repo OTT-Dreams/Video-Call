@@ -187,92 +187,99 @@
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
   <script>
-    let localStream;
-    let currentCall;
-    const localVideo = document.getElementById("localVideo");
-    const remoteVideo = document.getElementById("remoteVideo");
-    const topBar = document.getElementById("topBar");
-    let isLocalBig = false;
+  let localStream;
+  let currentCall;
+  const localVideo = document.getElementById("localVideo");
+  const remoteVideo = document.getElementById("remoteVideo");
+  const topBar = document.getElementById("topBar");
+  let isLocalBig = false;
 
-    const peer = new Peer();
+  const peer = new Peer();
 
-    peer.on("open", (id) => {
-      document.getElementById("peerIdText").textContent = id;
-      console.log("My PeerJS ID:", id);
+  peer.on("open", (id) => {
+    document.getElementById("peerIdText").textContent = id;
+    console.log("My PeerJS ID:", id);
+  });
+
+  peer.on("call", async (call) => {
+    currentCall = call;
+    if (!localStream) await getMedia();
+    call.answer(localStream);
+    call.on("stream", (remoteStream) => {
+      remoteVideo.srcObject = remoteStream;
+      topBar.style.display = "none";
     });
+  });
 
-    peer.on("call", async (call) => {
-      currentCall = call;
-      if (!localStream) await getMedia();
-      call.answer(localStream);
-      call.on("stream", (remoteStream) => {
-        remoteVideo.srcObject = remoteStream;
-        topBar.style.display = "none";
+  async function getMedia() {
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30, max: 60 }
+        },
+        audio: true
       });
+      localVideo.srcObject = localStream;
+    } catch (err) {
+      alert("Camera/Mic access denied or unavailable.\n➤ Make sure you allowed it in browser settings.");
+      console.error(err);
+    }
+  }
+
+  async function startCall() {
+    const peerId = document.getElementById("peerIdInput").value.trim();
+    if (!peerId) return alert("Please enter a peer ID to join.");
+    if (!localStream) await getMedia();
+
+    const call = peer.call(peerId, localStream);
+    currentCall = call;
+
+    call.on("stream", (remoteStream) => {
+      remoteVideo.srcObject = remoteStream;
+      topBar.style.display = "none";
     });
+  }
 
-    async function getMedia() {
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        localVideo.srcObject = localStream;
-      } catch (err) {
-        alert("Camera/Mic access denied or unavailable.\n➤ Make sure you allowed it in browser settings.");
-        console.error(err);
-      }
+  function toggleVideo() {
+    const videoTrack = localStream.getVideoTracks()[0];
+    videoTrack.enabled = !videoTrack.enabled;
+    document.getElementById("videoBtn").classList.toggle("toggled-off", !videoTrack.enabled);
+  }
+
+  function toggleAudio() {
+    const audioTrack = localStream.getAudioTracks()[0];
+    audioTrack.enabled = !audioTrack.enabled;
+    document.getElementById("audioBtn").classList.toggle("toggled-off", !audioTrack.enabled);
+  }
+
+  function endCall() {
+    if (currentCall) {
+      currentCall.close();
+      remoteVideo.srcObject = null;
+      topBar.style.display = "flex";
     }
+  }
 
-    async function startCall() {
-      const peerId = document.getElementById("peerIdInput").value.trim();
-      if (!peerId) return alert("Please enter a peer ID to join.");
-      if (!localStream) await getMedia();
+  function copyId() {
+    const id = document.getElementById("peerIdText").textContent;
+    navigator.clipboard.writeText(id);
+    alert("Copied ID: " + id);
+  }
 
-      const call = peer.call(peerId, localStream);
-      currentCall = call;
+  // Layout swap on click
+  function swapVideos() {
+    isLocalBig = !isLocalBig;
+    localVideo.classList.toggle("local-fullscreen", isLocalBig);
+    remoteVideo.classList.toggle("remote-small", isLocalBig);
+  }
 
-      call.on("stream", (remoteStream) => {
-        remoteVideo.srcObject = remoteStream;
-        topBar.style.display = "none";
-      });
-    }
+  localVideo.addEventListener("click", swapVideos);
+  remoteVideo.addEventListener("click", swapVideos);
 
-    function toggleVideo() {
-      const videoTrack = localStream.getVideoTracks()[0];
-      videoTrack.enabled = !videoTrack.enabled;
-      document.getElementById("videoBtn").classList.toggle("toggled-off", !videoTrack.enabled);
-    }
-
-    function toggleAudio() {
-      const audioTrack = localStream.getAudioTracks()[0];
-      audioTrack.enabled = !audioTrack.enabled;
-      document.getElementById("audioBtn").classList.toggle("toggled-off", !audioTrack.enabled);
-    }
-
-    function endCall() {
-      if (currentCall) {
-        currentCall.close();
-        remoteVideo.srcObject = null;
-        topBar.style.display = "flex";
-      }
-    }
-
-    function copyId() {
-      const id = document.getElementById("peerIdText").textContent;
-      navigator.clipboard.writeText(id);
-      alert("Copied ID: " + id);
-    }
-
-    // Layout swap on click
-    function swapVideos() {
-      isLocalBig = !isLocalBig;
-      localVideo.classList.toggle("local-fullscreen", isLocalBig);
-      remoteVideo.classList.toggle("remote-small", isLocalBig);
-    }
-
-    localVideo.addEventListener("click", swapVideos);
-    remoteVideo.addEventListener("click", swapVideos);
-
-    // 🔄 Get stream immediately
-    getMedia();
-  </script>
+  // 🔄 Get stream immediately
+  getMedia();
+</script>
 </body>
 </html>
